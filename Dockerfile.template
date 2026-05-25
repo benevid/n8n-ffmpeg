@@ -1,0 +1,25 @@
+# Default n8n version (used only when --build-arg N8N_VERSION is not provided).
+# The update script always overrides this via --build-arg, so this is just a fallback.
+ARG N8N_VERSION=1.0.0
+
+# Stage 1: download a statically linked ffmpeg (no runtime dependencies).
+FROM alpine:3.18 AS builder
+RUN apk add --no-cache curl tar xz
+RUN curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && \
+    tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \
+    mv /tmp/ffmpeg-*-amd64-static/ffmpeg /tmp/ffmpeg && \
+    mv /tmp/ffmpeg-*-amd64-static/ffprobe /tmp/ffprobe
+
+# Stage 2: final n8n image. We do NOT invoke any package manager here —
+# we only COPY the static binaries in. This is what sidesteps the upstream
+# image restrictions that block `apk add ffmpeg`.
+FROM n8nio/n8n:${N8N_VERSION}
+
+USER root
+
+COPY --from=builder /tmp/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=builder /tmp/ffprobe /usr/local/bin/ffprobe
+
+RUN chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
+
+USER node

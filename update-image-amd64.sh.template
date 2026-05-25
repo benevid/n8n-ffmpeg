@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Replace with your Docker Hub (or other registry) image name.
+IMAGE_NAME="<your-dockerhub-username>/n8n-ffmpeg"
+
+DOCKERFILE_PATH="."
+VERSION_FILE=".version"
+
+echo "=========================================="
+echo "   Build n8n-ffmpeg Docker Image"
+echo "=========================================="
+echo ""
+
+# Read the n8n version from .version
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "Error: $VERSION_FILE not found."
+    echo "Create the file with the desired n8n version (e.g. 2.2.0)."
+    exit 1
+fi
+
+N8N_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+
+if [ -z "$N8N_VERSION" ]; then
+    echo "Error: $VERSION_FILE is empty."
+    exit 1
+fi
+
+# Validate X.Y.Z format
+if ! [[ "$N8N_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: invalid version format in $VERSION_FILE: '$N8N_VERSION'"
+    echo "Expected format: X.Y.Z (e.g. 2.2.0)"
+    exit 1
+fi
+
+echo "Version read from $VERSION_FILE: $N8N_VERSION"
+echo ""
+echo "Configuration:"
+echo "  - Base image: n8nio/n8n:${N8N_VERSION}"
+echo "  - FFmpeg: static binary (johnvansickle.com)"
+echo "  - Tags to create: $IMAGE_NAME:$N8N_VERSION and $IMAGE_NAME:latest"
+echo ""
+
+read -p "Confirm build? (y/n): " CONFIRM
+if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+    echo "Build cancelled."
+    exit 0
+fi
+
+echo ""
+echo "Building custom n8n image with FFmpeg..."
+
+# Step 1: build
+echo ""
+echo "Building Docker image..."
+docker build --platform=linux/amd64 \
+    --build-arg N8N_VERSION=$N8N_VERSION \
+    -t $IMAGE_NAME:$N8N_VERSION $DOCKERFILE_PATH
+
+if [ $? -ne 0 ]; then
+    echo "Error: image build failed."
+    exit 1
+fi
+
+# Step 2: tag as latest
+echo ""
+echo "Creating 'latest' tag..."
+docker tag $IMAGE_NAME:$N8N_VERSION $IMAGE_NAME:latest
+
+# Step 3: login (if needed)
+echo ""
+echo "Checking Docker Hub login..."
+docker login || { echo "Error: login failed. Check your credentials."; exit 1; }
+
+# Step 4: push
+echo ""
+echo "Pushing $IMAGE_NAME:$N8N_VERSION to Docker Hub..."
+docker push $IMAGE_NAME:$N8N_VERSION
+
+echo ""
+echo "Pushing $IMAGE_NAME:latest to Docker Hub..."
+docker push $IMAGE_NAME:latest
+
+echo ""
+echo "=========================================="
+echo "   Build complete!"
+echo "=========================================="
+echo "   - $IMAGE_NAME:$N8N_VERSION"
+echo "   - $IMAGE_NAME:latest"
+echo "=========================================="
