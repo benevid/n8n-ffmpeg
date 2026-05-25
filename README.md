@@ -1,5 +1,7 @@
 # n8n-ffmpeg
 
+![n8n-ffmpeg](n8n.png)
+
 A custom Docker image that extends the official [n8n](https://n8n.io) image with `ffmpeg` and `ffprobe` available on `PATH`, so that workflows can run audio/video processing nodes (or shell commands invoking ffmpeg) directly.
 
 ## Why this image exists
