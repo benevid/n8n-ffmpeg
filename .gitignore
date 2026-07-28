@@ -2,7 +2,9 @@
 # Copy the .template files and rename them to use this project.
 Dockerfile
 update-image-amd64.sh
-
+n8n.yaml
 # Local Claude Code configuration and documentation.
 CLAUDE.md
 .claude/
+.graphify*
+graphify-out/
